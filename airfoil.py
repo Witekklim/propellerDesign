@@ -339,12 +339,11 @@ class Airfoil():
             plt.xlabel(r'$x/c$')
             plt.ylabel(r'$y/c$',fontsize=12)
             plt.title(r"{}".format('camber and thickness distributions'), fontsize=12)
-            # Make room for the ridiculously large title.
-            plt.subplots_adjust(top=0.8)
+            #plt.subplots_adjust(top=0.8)
             plt.axis('equal')
             plt.legend()
             plt.tight_layout()
-    #        plt.grid(True)
+            plt.grid('major', linewidth = .2)
             plt.savefig(self.fileFig+'ct', dpi = 1000)
             plt.show()
             

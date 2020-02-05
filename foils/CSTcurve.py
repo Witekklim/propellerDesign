@@ -55,7 +55,9 @@ import matplotlib.pyplot as plt
 import os
 
 import sys
-sys.path.append("E:\propeller\python")
+path = os.getcwd()
+sys.path.append(os.getcwd().strip('\\foils'))
+#sys.path.append("E:\propeller\python")
 from airfoil import Airfoil
 
 from subprocess import run, PIPE
@@ -68,7 +70,6 @@ class CSTcurve():
     INPUTS:
     P:          vector of parameters of any length e.g. P = [1,1,1,1,1]
     N1, N2:     le and te exponents for derivative control, default set (0.5,1)
-    
     
     attributes:
     x,y:        coordinates of curve
@@ -122,18 +123,19 @@ class CSTcurve():
             X = np.append(self.x.reshape(-1,1), self.y.reshape(-1,1), axis = 1)
             np.savetxt(r'E:\propeller\python\wing3d\tex-plots\cstcurve.txt', X)
 
-def plotBernBase(n):
-    def Bernstein(i,p,phi):
-        # returns value of bernstein for single point (phi), inputs are parameters
-        return np.math.factorial(p)/(np.math.factorial(i)*np.math.factorial(p-i))*(phi**i)*((1-phi)**(p-i))
-    fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
-    x = np.linspace(0,1,100)
-    for i in range(n+1):
-        print('i, p = {}, {}'.format(i,n-i))
-        y =  Bernstein(i, n, x)
-        ax.plot(x, y, 'k-', linewidth = 1)
-        X = np.append(x.reshape(-1,1), y.reshape(-1,1), axis = 1)
-        np.savetxt(r'E:\propeller\python\wing3d\tex-plots\bernstein{}.txt'.format(i), X)
+    def plotBernBase(self, n):
+        """ just to plot bernstein basis, for refernce """
+        def Bernstein(i,p,phi):
+            # returns value of bernstein for single point (phi), inputs are parameters
+            return np.math.factorial(p)/(np.math.factorial(i)*np.math.factorial(p-i))*(phi**i)*((1-phi)**(p-i))
+        fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
+        x = np.linspace(0,1,100)
+        for i in range(n+1):
+            print('i, p = {}, {}'.format(i,n-i))
+            y =  Bernstein(i, n, x)
+            ax.plot(x, y, 'k-', linewidth = 1)
+            X = np.append(x.reshape(-1,1), y.reshape(-1,1), axis = 1)
+            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\bernstein{}.txt'.format(i), X)
     
         
 class CSTairfoil:
@@ -186,17 +188,13 @@ class CSTairfoil:
             self.camber = CSTcurve(P, N1, M1, points)
             self.thick = CSTcurve(Q, N2, M2, points)
             
-            topy = self.camber.y + np.array(self.thick.y)/2
-            boty = self.camber.y - np.array(self.thick.y)/2
+            topy = self.camber.y + np.array(self.thick.y)#/2
+            boty = self.camber.y - np.array(self.thick.y)#/2
             
             self.top = CSTcurve(P, N1, M1, points)
             self.bottom = CSTcurve(Q, N2, M2, points)
             self.top.y = topy
             self.bottom.y = boty
-
-            plt.plot(self.top.x, self.top.y)
-            plt.plot(self.bottom.x, self.bottom.y)
-            plt.show()
 
         else:
             print('specify option for airfoil build:\noption = 1 for top and bottom separately\noption = 2 for camber plus thickness definition')
