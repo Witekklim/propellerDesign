@@ -37,6 +37,7 @@ a.plotAirfoil('$100mm$ foil, $t/c=0.14$', True)
 import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
+import os
 
 from subprocess import run, PIPE
 import gc
@@ -72,7 +73,7 @@ class Airfoil():
             - t: float: te thickness
             - T_req: maximum thickness to match required absolute thickness
             - origin: float: used to keep particular airfoil poitn in center, e.g. origin = .25 keeps quarter chord in center
-            - camb: Tru/False: if we want to scael camber woth thickness
+            - camb: True/False: if we want to scael camber with thickness
         attributes:
             - x: x-coords
             - y: y-coords
@@ -84,6 +85,9 @@ class Airfoil():
         self.camber = camber
         self.z = z
         self.filein = filein
+
+        self.workingdir = workingdir if workingdir != None else os.getcwd()
+
         self.filebuffer = 'E:/propeller/XFOIL/xfoilairfoil.txt'
         self.filecp = 'E:/propeller/XFOIL/xfoilairfoilcp.txt'
         self.fileCptex = 'E:/propeller/XFOIL/xfoilairfoilcptex.txt'
