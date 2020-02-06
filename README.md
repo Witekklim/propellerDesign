@@ -6,6 +6,8 @@ code used to analyze and design propeller
 
 **Table of Contents**
 
+[TOCM]
+
 [TOC]
 
 ## airfoil tools
