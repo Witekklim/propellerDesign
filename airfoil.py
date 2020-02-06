@@ -61,7 +61,6 @@ class Airfoil():
                  chord = None, beta = None, z = 0, fileoutICEM = None, t = 0, dx = 0, dy = 0, split = False, origin = 0,
                  camb = False, r_LE = 0.0005, verbose = False, workingdir = None):
         """       
-        
         inputs:
             - ftype: 'ICEM' / 'XFOIL' / 'XY', specifies type of airofil input data 
             - filein: '.txt' file with points coords (can be non-txt)
@@ -77,9 +76,7 @@ class Airfoil():
         attributes:
             - x: x-coords
             - y: y-coords
-            - z: z-coords
-            
-        
+            - z: z-coords        
         """
         gc.collect()
         self.camber = camber
@@ -87,7 +84,7 @@ class Airfoil():
         self.filein = filein
 
         self.workingdir = workingdir if workingdir != None else os.getcwd()
-
+        print('workingdir {}'.format(self.workingdir))
         self.filebuffer = 'E:/propeller/XFOIL/xfoilairfoil.txt'
         self.filecp = 'E:/propeller/XFOIL/xfoilairfoilcp.txt'
         self.fileCptex = 'E:/propeller/XFOIL/xfoilairfoilcptex.txt'
@@ -161,7 +158,6 @@ class Airfoil():
         if self.split:
             self.splitCurve()
     
-    # reading functions
     def readICEM(self):
         X = np.loadtxt(self.filein, delimiter = '\t', skiprows = 1)
         self.x = X[:,0]
@@ -169,7 +165,6 @@ class Airfoil():
         self.z = self.z
     
     def readXFOIL(self, file = None):
-#        print('called readXFOIL')
         if file is None:
             X = np.loadtxt(self.filein, skiprows = 1)
         else:
@@ -179,11 +174,9 @@ class Airfoil():
         self.z = self.z
         self.filein = self.filebuffer
         
-    # xfoil functions
     def saveXFOIL(self):
         """  saves airfoil coords to .txt file with specified path 
             if file is None assume buffer airfoil
-        
         """
         # close trailing edge
         # save coords to file
@@ -213,7 +206,6 @@ class Airfoil():
             t: thickness
             r: blending radius
         """
-        # paths
         self.saveXFOIL()
         airfoilIN = self.filebuffer 
         airfoilOUT = self.filebuffer
@@ -228,7 +220,6 @@ class Airfoil():
         thickness and camber distribution
             values below 1 decrease, above 1 increase scale (1 is no change)
         """
-        # paths
         self.saveXFOIL()
         airfoilIN = self.filebuffer 
         airfoilOUT = self.filebuffer 
@@ -242,7 +233,6 @@ class Airfoil():
     def thicken(self, req_T, camb = False):
         """ modifies thickness to required value of maximum thickness
             can also modify camber of airfoil
-        
         """
         self.findCamberThickness()
         factor = req_T/(self.t_max*self.chord)
@@ -259,8 +249,6 @@ class Airfoil():
     def scale_XFOIL(self, factor = 1):
         """ scales airfoil using xfoil 
         """
-        # paths
-        
         print('chord before modification: {:.3f}'.format(self.chord))
         self.saveXFOIL()
         airfoilIN = self.filebuffer 
@@ -278,7 +266,6 @@ class Airfoil():
     def translate_XFOIL(self, dx = 0, dy = 0):
         """ translates airfoil by specified dx and dy
         """
-        # paths
         self.saveXFOIL()
         airfoilIN = self.filebuffer 
         airfoilOUT = self.filebuffer 
@@ -292,7 +279,6 @@ class Airfoil():
     def rotate_XFOIL(self, angle = 0, origin  = 0):
         """ rotates airfoil using xfoil by specified angle in degrees, around (0,0), positive angle moves TE down
         """
-        # paths
         if origin is not 0:
             self.translate_XFOIL(dx = -origin*self.chord)
         
@@ -312,8 +298,7 @@ class Airfoil():
             
     def findCamberThickness(self, plot = False, tex = False, name = ''):
         """ finds camber and thickness distributions usign xfoil  """
-    
-        # paths
+
         self.saveXFOIL()
         airfoilIN = self.filebuffer 
         airfoilOUT = self.filebuffer 
@@ -328,7 +313,6 @@ class Airfoil():
         self.camber = X[:,:2]
         self.thickness = X[:,2:]
         self.readXFOIL(airfoilOUT)
-        
         self.t_max = 2* np.max(self.thickness[:,1])
         
         
@@ -362,11 +346,8 @@ class Airfoil():
         self.t_x(0.5) returns thickness at x/c = 0.5
         if no argument passed, returns max thickness
         """
-        
         self.findCamberThickness()
-        
         i = 0
-        
         if x is None:
             return self.t_max
         
@@ -379,17 +360,18 @@ class Airfoil():
         
     
             
-    def LEradius(self, plot = False):     
+    def LEradius(self, plot = False, dpi = 500, saveFig = False):     
         """ method to find leading edge radius 
         
             buids many circles, each from 3 points from leading edge region
             lowest radius circle is chosen as le radius
+
+            allows to plot le region to investigate le radius
         """
         def findCircle(P1, P2, P3):
             import sympy as sym
             
             a, b, r2 = sym.symbols('a, b, r2')
-        
             e1 = sym.Eq((P1[0]-a)**2+(P1[1]-b)**2, r2**2)
             e2 = sym.Eq((P2[0]-a)**2+(P2[1]-b)**2, r2**2)
             e3 = sym.Eq((P3[0]-a)**2+(P3[1]-b)**2, r2**2)
@@ -415,41 +397,24 @@ class Airfoil():
                     y = y_temp
                 k+=1
             j+=1
-#        print(r)
 
         if plot:
             an = np.linspace(0, 2*np.pi, 100)
-#            plt.figure()
-#            plt.plot(self.x, self.y, '.')
-#            
-#            plt.plot([x],[y],'o')
-#            plt.plot(r*np.cos(an)+x, r*np.sin(an)+y)
-#            plt.tight_layout()
-#            plt.axis([-r, r*3, -r*2, r*2], 'equal')
-#            plt.show()
-            dpi = 500
-            saveFig = False
             
             plt.figure(dpi = dpi)
-#            plt.axis([-r, r*3.5, -r*2, r*2], 'equal')
             plt.rc('text', usetex=True)
             plt.rc('font', family='serif')
             plt.plot(self.x, self.y, 'ko-', linewidth = 1.4)
             plt.plot([x],[y],'ro')
             plt.plot(r*np.cos(an)+x, r*np.sin(an)+y, 'r-', linewidth = 1.4)
             plt.title(r"{}".format('leading edge radius close up'), fontsize=12)
-            # Make room for the ridiculously large title.
-#            plt.subplots_adjust(top=0.8)
             
             plt.axis('equal')
             plt.ylim(-r, r*3.5)
-#            plt.grid(which='major', linewidth = 0.2)
-#            plt.tight_layout()
-    #        plt.grid(True)
+
             if saveFig:
                 plt.savefig(self.fileFig, dpi = 1000)
             plt.show()
-            
                 
             fig, ax = plt.subplots(dpi = 500)
             ax.plot(self.x, self.y, 'ko-', linewidth = 1.4)
@@ -529,16 +494,9 @@ class Airfoil():
         
         
     def runXFOIL(self, cl=.2, alfa = None, re=1e6, m =.2, n_crit = 6, iters = 500, cp = False):
-        # try to extract drag from xfoil, if xfoil crashes apply penalty on design
-        # if xfoil failes, returns (alfa, cd, cm) = (1, 1, 1)
-        
-#        if self.ftype is not 'XFOIL':
         self.saveXFOIL()
-        
         airfoilIN = self.filebuffer 
-        
-        
-        
+
         if alfa is None:
             S = cl
             s = 'cl'
@@ -559,9 +517,7 @@ class Airfoil():
             p = run([self.xfoilpath], stdout=PIPE,
                     input=commands, encoding='ascii')
             return 0
-        
-#        print(p)
-        
+
         try:
             alfa = float(p.stdout[-130:-118])
             Cl = float(p.stdout[-112:-106])
@@ -607,18 +563,6 @@ class Airfoil():
             plt.ylabel(r'$C_D$')
             plt.show()
         
-        # USE TO COMPARE TWO FOILS WHOSE DATA WAS OBTAINED WITH runPolar
-        
-#plt.figure(dpi = 200)
-#plt.plot(cls, cds, 'k-o', label = '$R=1$')
-#plt.plot(cls2, cds2, 'k--s', label = '$R=2$')
-#plt.legend()
-#plt.xlabel(r'$C_L$')
-#plt.ylabel(r'$C_D$')
-#plt.grid('major', linewidth = 0.3)
-#plt.tight_layout()
-        
-        
         return alfas, cds, cms, cls
     
     def plotCp(self, outputtex = False, dpi = 200, name = None, saveFig = False, airfoil= True, alfa = None):
@@ -646,7 +590,6 @@ class Airfoil():
         plt.xlabel(r'$x/c$',fontsize=12)
         plt.ylabel(r'$-C_p$',fontsize=12)
         plt.title(r"{}".format(name), fontsize=12)
-        # Make room for the ridiculously large title.
         plt.subplots_adjust(top=0.8)
 #        plt.axis('equal')
         plt.grid(which='major', linewidth = 0.2)
