@@ -84,7 +84,7 @@ class Airfoil():
             if self.verbose:
                 print('evaluated chord is {:.2f}'.format(self.chord))
         else:
-            self.chord = np.max(self.x) - np.min(self.x)
+            #self.chord = np.max(self.x) - np.min(self.x)
             self.scale_XFOIL(chord/np.max(self.x))
             self.saveXFOIL()
             if self.verbose:

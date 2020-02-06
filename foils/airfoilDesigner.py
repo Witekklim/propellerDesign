@@ -2,7 +2,7 @@
 """
 Created on Wed Aug  7 08:50:22 2019
 
-@author: WK5521
+@author: Witold Klimczyk
 """
 
 from airfoilCST import CSTairfoil
@@ -16,20 +16,15 @@ class airfoilDesigner():
             kriging based design
             differential evolution based design   
     """
-    def __init__(self, L_req, parametrization , N_pars = None,  constraints = None , N_samples = None,
+    def __init__(self, L_req, parametrization , N_pars = None,  constraints = None ,
                  ts = None, xs = None, weights = None):
         """
         L_req: array of cls for multi-point design: e.g. [.3,.6,.9]
         parametrization: 'CST' or 'BS' (b-spline)
-        
         """
         self.parametrization = parametrization
         self.L_req = L_req
         self.N_pars = N_pars
-        if N_samples is None:
-            self.N_samples = 10 * N_pars
-        else:
-            self.N_samples = N_samples
         
         # by default top and bottom/camber and thickness curves are of the same size
         self.N_1 = int(N_pars/2)
@@ -43,8 +38,6 @@ class airfoilDesigner():
         self.fileSampling = r'E:\propeller\python\wing3d\X-{}-{}.txt'.format(N_pars, self.N_samples)
         self.filey = r'E:\propeller\python\wing3d\y-{}-{}.txt'.format(N_pars, self.N_samples)
         
-        
-        
         # constraints
         if ts is None:
             self.ts = np.array([.11, .08, .03])
@@ -57,7 +50,6 @@ class airfoilDesigner():
         # observations
         self.y = np.zeros(self.N_samples)
         
-        
         # bounds section
         self.LB= None
         self.UB = None
@@ -67,7 +59,6 @@ class airfoilDesigner():
         self.boundsBS = np.array([ [0.02 , 0.040] , [0.06, 0.1] , [0.06, 0.10] , [0.05, 0.1] , [0.02, 0.05]
                                   ,[0.045 ,0.065] , [0.09,0.16] , [0.08, 0.14] , [0.06, 0.1] , [0.03, 0.08] ])
         
-        self.finalKriging = None
         self.finalAirfoilBS = None
         self.finalAirfoil = None
     
@@ -117,7 +108,6 @@ class airfoilDesigner():
         
         
     def runOptimization(self, maxiter = 10):
-
 #        self.result = minimize(self.merit, x0 = self.UB, method='L-BFGS-B', bounds = self.bounds, options = {'eps' : 1e-2})
         
         self.result = de(self.merit, bounds = [(0,1)] * self.N_pars, maxiter=maxiter)
@@ -128,8 +118,6 @@ class airfoilDesigner():
             self.finalAirfoil = self.airfoilBSfromX(self.result.x)
         self.finalAirfoil.plotAirfoil()
         
-#        self.finalAirfoil = self.airfoilfromX(self.result.x)
-        self.finalAirfoil.plotAirfoil()    
     
     def merit(self, X):
         if self.parametrization == 'CST':
@@ -163,8 +151,6 @@ class airfoilDesigner():
         return merit
 
         
-    
-    
     
     
     

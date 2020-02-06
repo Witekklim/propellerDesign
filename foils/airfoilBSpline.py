@@ -18,8 +18,6 @@ sys.path.append(os.getcwd().strip('\\foils'))
 
 from airfoil import Airfoil
 
-
-
 class BSplineAirfoil():
     """  build a bspline based airfoil basing on two sets of kntos: for upper and lower surfaces """
     def __init__(self, knotsU, knotsL, fileFig = None):
@@ -66,10 +64,7 @@ class BSplineAirfoil():
     def genAirfoil(self, t = 0):
         return Airfoil('XY', x = self.x , y=self.y, t = t)
         
-        
-        
-        
-        
+         
         
         
 class curve():
