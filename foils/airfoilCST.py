@@ -2,7 +2,7 @@
 """
 Created on Fri Jun 21 08:45:46 2019
 
-@author: WK5521
+@author: Witold Klimczyk
 N for leading edge, M for trailing edge
 N1: derivative -> 0;  -> 0.5 -> infty, >0.5 shit, keep it below 1, but > 0.7
 N2: want smooth LE -> N2 = 0.5, want sharp LE -> N2 = 1
