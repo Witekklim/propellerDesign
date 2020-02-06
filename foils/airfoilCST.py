@@ -8,46 +8,6 @@ N1: derivative -> 0;  -> 0.5 -> infty, >0.5 shit, keep it below 1, but > 0.7
 N2: want smooth LE -> N2 = 0.5, want sharp LE -> N2 = 1
 M1: want derivative 0 -> M1 = 1, icreasae derivative by setting M1 -> 0, direct derivative control with M1 = 0
 M2: keep at 0.5.
-    
-
-
-P = [0.03, .08,  .12 , .16,  .06]
-Q = [.16, .18, .2,  .11, .1]
-
-#pars = [1. 0. 1. 1. 1. 0. 0. 0. 0. 1.]
-#P = pars[:5]
-#Q = pars[5:]
-
-airfoil = CSTairfoil(P, Q, N1 = .5, N2 = .5,  M1 = 1, M2 = 1, points = 150)
-
-a = airfoil.genAirfoil(t = 0.008)
-
-#a.runXFOIL(alfa = 2, re = 1e6)
-a.plotAirfoil(saveFig = True, dpi = 200)
-
-
-
-
-a.findCamberThickness(True, True, 'cst0')
-a.plotAirfoil(tex = True, nametex = 'cst0')
-a.runXFOIL(alfa = 2, re = 1e5, cp = True, n_crit = 2)
-a.plotCp()
-
-
-a.runFluent(5,.4,.5, mesh = 'o')
-
-a1, cd, cm , cl  = a.runXFOIL(.8, re = 5e5, m = .1)
-print(a1, cd, cm , cl)
-a1, cd, cm , cl  = a.runXFOIL(.4, re = 1e6, m = .2)
-print(a1, cd, cm , cl)
-
-
-
-========================================================
-parameters for optimzation:
-max camber : P = [0.05, .3,  0.3,   .3 , .3,  .2]
-min thickenss: Q = [.1, .1, .1, .1,  .1, .1]
-max tthickness: Q = [.25, .25, .25, .25,  .25, .25]
 
 """
 import numpy as np
@@ -64,7 +24,7 @@ from subprocess import run, PIPE
 
         
 class CSTairfoil:
-    def __init__(self, P, Q, N1 = 0.5 , N2 = 0.5, M1 = 1, M2 = 1, points = 160, N = None, verbose = False, option = 2, workingdir = None):
+    def __init__(self, P, Q, N1 = 0.5 , N2 = 0.5, M1 = 1, M2 = 1, points = 160, N = None, verbose = False, option = 2, workingdir = None, xfoildir = None):
         """
         INPUTS:
         P and Q:     are vectors of variables for top and bottom airfoil curves
@@ -76,8 +36,6 @@ class CSTairfoil:
         attibutes:
         top:         cst class curve defining top curve     attributes: top.x, top.y define coords
         bottom:      cst class curve defining bottom curve  
-
-
         """
         self.maxthickness = None
         self.area = None
@@ -97,12 +55,11 @@ class CSTairfoil:
         
         self.xfoilpath = 'E:/propeller/XFOIL/xfoil.exe'
         self.workingdir = workingdir if workingdir != None else os.getcwd()
-        
-        #self.xfoilfile = r'E:/wing/airfoil/'  + self.name + '.txt'
-        self.xfoilthickness = r'E:\propeller\XFOIL\thicknessfoil.txt' # foil with thickness distribution
-        self.xfoilcamber = r'E:\propeller\XFOIL\camberfoil.txt'     # foil with camber distribution
-        self.cambertxt = 'camberdist.txt'     # file with camber distribution
-        self.xfoil = r'E:\propeller\XFOIL\cstfoil.txt'              # final foil
+        self.xfoildir = xfoildir if xfoildir != None else os.getcwd().strip('\\python')
+        self.xfoilthickness = self.xfoildir + r'\thicknessfoil.txt'     # foil with thickness distribution
+        self.xfoilcamber = self.xfoildir + r'\camberfoil.txt'         # foil with camber distribution
+        self.cambertxt = 'camberdist.txt'                               # file with camber distribution
+        self.xfoil = self.xfoildir + r'\cstfoil.txt'                  # final foil
         
 
         # build foil
@@ -120,7 +77,6 @@ class CSTairfoil:
             self.bottom = CSTcurve(Q, N2, M2, points)
             self.top.y = topy
             self.bottom.y = boty
-
         else:
             print('specify option for airfoil build:\noption = 1 for top and bottom separately\noption = 2 for camber plus thickness definition')
         
@@ -129,7 +85,7 @@ class CSTairfoil:
     
     def plotAirfoil(self):
         
-        fig = plt.figure(dpi = 300)
+        fig = plt.figure(dpi = 200)
 
         plt.plot(self.top.x, self.top.y, 'k-', label = 'top', linewidth = 1)
         plt.plot(self.bottom.x, self.bottom.y, 'k-', label = 'top', linewidth = 1)
@@ -155,7 +111,7 @@ class CSTairfoil:
         
         # save coords to file
         if file is None:
-            file= self.xfoil#file
+            file= self.xfoil
         with open(file, "w") as text_file:
             print("airfoilCST", file = text_file)
             for i in range(len(self.bottom.x)-1,0,-1):
@@ -258,7 +214,7 @@ class CSTcurve():
         self.y = np.asarray(self.y)
    
     def plot_CST(self, tex = False):
-        from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
+        #from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
         fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
         ax.plot(self.x, self.y, 'k-', linewidth = 1)
         plt.grid(True)

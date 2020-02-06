@@ -1,30 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Aug 20 14:30:14 2019
+@author: Witold Klimczyk
 
-@author: WK5521
+file contains BSplineAirfoil class, which builds bspline airofils from knots for upper nad lower curves
+based on class curve, which builds bsplines with scipy implemnetation
 
-knotsU = np.array([[0,0], [0., .04], [0.2, .1], [.4, .12],[.6,.1], [.8, .05] ,[1,0] ])
-knotsL = np.array([[0,0], [0., -.025], [0.2, -.05], [.4, -0.06],[.6, -.01],[.8, .01], [1,0] ])
-foil = BSplineAirfoil(knotsU, knotsL)
-foil.plotAirfoil(True)
-foil.saveTex('LB')
-
-
-a = foil.genAirfoil()
-a.plotAirfoil()
-a.findCamberThickness(True)
-
-a.runFluent(2,.2,1,'bspline1')
-
-
--------------------------------------------------------------------------
-BS airofil from 10 parameters: 
-x = np.asarray([ 0.02774923,  0.09707878,  0.08142534,  0.06446338,  0.02688518,-0.0535    , -0.12202614, -0.11585406, -0.08      , -0.03      ])
-knotsU = np.asarray([[0, 0], [0, x[0]], [0.2, x[1]], [0.4, x[2]], [.6, x[3]], [.8, x[4]], [1, 0]])
-knotsL = np.asarray([[0, 0], [0, x[0] +x[5]], [0.2,x[1] +  x[6]], [0.4,x[2] +  x[7]], [.6,x[3] + x[8]], [.8,x[4] +  x[9]], [1, 0]])
-foil = BSplineAirfoil(knotsU, knotsL)
-foil.plotAirfoil(True)
 """
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,12 +20,13 @@ from airfoil import Airfoil
 
 
 
-class BSplineAirfoil(object):
+class BSplineAirfoil():
     """  build a bspline based airfoil basing on two sets of kntos: for upper and lower surfaces """
-    def __init__(self, knotsU, knotsL):
+    def __init__(self, knotsU, knotsL, fileFig = None):
         self.knotsU = knotsU
         self.knotsL = knotsL
-        
+        self.fileFig = fileFig
+
         self.curveU = curve(self.knotsU, 100)
         self.curveL = curve(self.knotsL, 100)
         
@@ -56,11 +38,7 @@ class BSplineAirfoil(object):
         self.x = np.concatenate ((np.flip(self.xL, axis = 0)[:-1], self.xU ))
         self.y = np.concatenate ((np.flip(self.yL, axis = 0)[:-1], self.yU )) 
         
-#        plt.plot(self.x, self.y)
-        
-        self.fileFig = r'C:\Users\wk5521\Documents\python\saved_plots\airfoil'
-        
-    def plotAirfoil(self, saveFig = False):
+    def plotAirfoil(self, name = 'b-spline airfoil', saveFig = False):
         
         plt.figure(figsize = (6, 3), dpi = 200)
         plt.plot(self.xU, self.yU, 'k-', label = 'airfoil')
@@ -70,6 +48,7 @@ class BSplineAirfoil(object):
         plt.legend()
         plt.xlabel('$x/c$')
         plt.ylabel('$y/c$')
+        plt.title(name)
         plt.tight_layout()
         if saveFig:
             plt.savefig(self.fileFig, dpi = 1000)
@@ -79,20 +58,12 @@ class BSplineAirfoil(object):
         X = np.append(self.knotsU.reshape(-1,2),np.flip( self.knotsL[:-1].reshape(-1,2), axis = 0), axis = 0)
         np.savetxt(r'E:\propeller\python\wing3d\tex-plots\knots{}.txt'.format(name), X)
         
-        
         X = np.append(self.xU.reshape(-1,1), self.yU.reshape(-1,1), axis = 1)
         y = np.append(self.xL.reshape(-1,1), self.yL.reshape(-1,1), axis = 1)
         X = np.append(X, np.flip(y, axis = 0), axis = 0)
         np.savetxt(r'E:\propeller\python\wing3d\tex-plots\points{}.txt'.format(name), X)
         
-        
-        
-        
-    def genAirfoil(self, t = 0.005):
-#        self.(self, ftype = 'ICEM', filein = None, x = None, y = None,  T_req = None, camber = None,
-#                 chord = None, beta = None, z = 0, fileoutICEM = None, t = 0, dx = 0, dy = 0, split = False, origin = 0,
-#                 verbose = False)
-        
+    def genAirfoil(self, t = 0):
         return Airfoil('XY', x = self.x , y=self.y, t = t)
         
         
@@ -101,13 +72,7 @@ class BSplineAirfoil(object):
         
         
         
-class curve:
-    """
-    cur = curve( np.array([[0,1],[1,2],[1,4]]))
-
-    self.curve defines bspline from input knots
-    
-    """
+class curve():
     def __init__(self, knots, points = 100):
         """ finds bspline curve for specified knots
         inputs: knots coords as numpy array  [  [x0,y0],[x1,y1],...,[xn-1,yn-1]  ]

@@ -1,65 +1,27 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jun 14 13:57:29 2019
-
-@author: WK5521
-
-
-a = Airfoil('ICEM', r'E:/propeller/mh_airofils/mh112/mh112.txt', origin = 0)
-#a.qpropData(.15, 7e5)
-
-
-a = Airfoil('XFOIL', r'E:/propeller/XFOIL/mh117.dat', origin = 0)
-alfas4, cds4, cms4, cls4 = a.runPolar(re=1e6, n_crit = 9)
-
-
-
-
-
-a = Airfoil('XFOIL', r'E:/propeller/XFOIL/mh117.dat', chord = .2, beta = 0, t = .002, origin = 0.25, T_req = .023, dx = 0, dy = 0)
-a.plotAirfoil('airfoil', True)
-a.saveICEM
-a.findCamberThickness(True)
-
-a.runFluent(4, .4, .2)
-
-a = Airfoil('XFOIL', r'E:/propeller/XFOIL/mh117.dat', fileoutICEM = r'E:\propeller\python\wing3d/mh117' , chord = 1, beta = 0, t = .002, origin = 0.25, T_req = .023, dx = 0, dy = 0)
-a.plotAirfoil('airfoil', True)
-a.saveICEM()
-
-a = Airfoil('XFOIL', r'E:/propeller/XFOIL/foilsWK/wk10rb.txt' , chord = .1, beta = 0, t = .001, origin = 0., T_req = 1400, dx = 0, dy = 0)
-a.plotAirfoil('$100mm$ foil, $t/c=0.14$', True)
-
-
+@author: Witold Klimczyk
 
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
-import subprocess
-import os
-
-from subprocess import run, PIPE
-import gc
-from fluentScheme import generateScheme
-from icemScheme import generateICEMScheme
 from matplotlib import rc
 rc('text', usetex=True)
+import subprocess
+import os
+from subprocess import run, PIPE
+import gc
+
+from fluentScheme import generateScheme
+from icemScheme import generateICEMScheme
+
 
 class Airfoil():
-    """ airfoil info:
-            read data points
-            plot
-            cutTE
-            scale to chord
-            twist angle
-            specify third coords
-            save under required format (icem)
-        
-        """
     def __init__(self, ftype = 'ICEM', filein = None, x = None, y = None,  T_req = None, camber = None,
                  chord = None, beta = None, z = 0, fileoutICEM = None, t = 0, dx = 0, dy = 0, split = False, origin = 0,
-                 camb = False, r_LE = 0.0005, verbose = False, workingdir = None):
+                 camb = False, r_LE = 0.0005, verbose = False, workingdir = None, xfoildir = None):
         """       
         inputs:
             - ftype: 'ICEM' / 'XFOIL' / 'XY', specifies type of airofil input data 
@@ -73,6 +35,8 @@ class Airfoil():
             - T_req: maximum thickness to match required absolute thickness
             - origin: float: used to keep particular airfoil poitn in center, e.g. origin = .25 keeps quarter chord in center
             - camb: True/False: if we want to scael camber with thickness
+            - workingdir: specify if other than current
+            - xfoildir: contains xfoil.exe and uses this directory to save .txt files, if not given assumes it is in folder XFOIL under the same directory as current working folder
         attributes:
             - x: x-coords
             - y: y-coords
@@ -80,25 +44,29 @@ class Airfoil():
         """
         gc.collect()
         self.camber = camber
+        self.chord = chord
         self.z = z
         self.filein = filein
 
         self.workingdir = workingdir if workingdir != None else os.getcwd()
         print('workingdir {}'.format(self.workingdir))
-        self.filebuffer = 'E:/propeller/XFOIL/xfoilairfoil.txt'
-        self.filecp = 'E:/propeller/XFOIL/xfoilairfoilcp.txt'
-        self.fileCptex = 'E:/propeller/XFOIL/xfoilairfoilcptex.txt'
-        self.camber_t = 'E:/propeller/XFOIL/camber_t.txt'
-        self.xfoilpath = 'E:/propeller/XFOIL/xfoil.exe'
-        self.fileFig = r'C:\Users\wk5521\Documents\python\saved_plots\airfoil'
-        self.meshDir = r'E:\propeller\python\airfoil/'
-        self.fileoutICEM = fileoutICEM
+        self.xfoildir = xfoildir if xfoildir != None else os.getcwd().strip('\\python')
+        self.filebuffer = self.xfoildir + '/XFOIL/xfoilairfoil.txt'
+        self.filecp = self.xfoildir + '/XFOIL/xfoilairfoilcp.txt'
+        self.fileCptex = self.xfoildir + '/XFOIL/xfoilairfoilcptex.txt'
+        self.camber_t = self.xfoildir + '/XFOIL/camber_t.txt'
+        self.xfoilpath = self.xfoildir + '/XFOIL/xfoil.exe'
+
+        # directories to check before analysis
+        self.fileFig = self.workingdir + r'\saved_plots\airfoil'
+        self.meshin = self.workingdir + '/wing3d/omesh/fluent.msh'
+        self.meshDir = self.workingdir + r'\airfoil/'
+        self.fileoutICEM = self.workingdir+'/wing3d/omeshfoil' if fileoutICEM is None else fileoutICEM
         self.ftype = ftype
         self.verbose = verbose
         
         self.camber = None
         self.thickness = None
-        
         self.split = False
         
         if ftype == 'ICEM':
@@ -136,8 +104,7 @@ class Airfoil():
         # cut TE
         if t > 0:
             self.cutTE_XFOIL(t, r = .3)
-        
-        
+    
         if r_LE is not None:
             r_LE_current = self.LEradius()[0]
             if r_LE > r_LE_current:
@@ -176,7 +143,6 @@ class Airfoil():
         
     def saveXFOIL(self):
         """  saves airfoil coords to .txt file with specified path 
-            if file is None assume buffer airfoil
         """
         # close trailing edge
         # save coords to file
@@ -193,13 +159,10 @@ class Airfoil():
                 for i in range(len(self.x1)):
                     print("  {} {}".format(self.x1[i], self.y1[i]), file=text_file)
 
-
-
 ###
 ###   ===================        GEOMETRY SECTION           ==========================
 ###
                     
-
     def cutTE_XFOIL(self, t = .005, r = 0.05):
         """ modifies airfoil using xfoil to maintain camber
         
@@ -210,7 +173,7 @@ class Airfoil():
         airfoilIN = self.filebuffer 
         airfoilOUT = self.filebuffer
         command = 'load ' + airfoilIN + '\npane\ngdes\ntgap '+ '{} {}'.format(t,r) + '\n\npane\n\nsave '+airfoilOUT+'\ny\n\nquit\n'
-        p = run([self.xfoilpath], stdout=PIPE,  input=command, encoding='ascii', shell = False)
+        run([self.xfoilpath], stdout=PIPE,  input=command, encoding='ascii', shell = False)
         if self.verbose:
             print('succesfully modified TE using xfoil')
         self.readXFOIL(airfoilOUT)
@@ -336,8 +299,10 @@ class Airfoil():
             plt.show()
             
         if tex:
-            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\{}camber.txt'.format(name), self.camber)
-            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\{}thickness.txt'.format(name), self.thickness)
+            camberdir = self.workingdir + r'\wing3d\tex-plots\{}camber.txt'.format(name)
+            thicknessdir = self.workingdir + r'\wing3d\tex-plots\{}thickness.txt'.format(name)
+            np.savetxt(camberdir, self.camber)
+            np.savetxt(thicknessdir, self.thickness)
 
     
     def t_x(self, x=None):
@@ -483,15 +448,11 @@ class Airfoil():
                 for i in range(len(self.x2)):
                     f.write('{}\t{}\t{}\n'.format(self.x2[i]*1000, self.y2[i]*1000, self.z2[i]*1000) ) 
                     
-            
-            
-            
-            
+                       
 ###
 ###   ===================        ANALYSIS SECTION           ==========================
 ###
-
-        
+   
         
     def runXFOIL(self, cl=.2, alfa = None, re=1e6, m =.2, n_crit = 6, iters = 500, cp = False):
         self.saveXFOIL()
@@ -527,7 +488,7 @@ class Airfoil():
             print(alfa,Cl,Cd,Cm)
         except ValueError:
             if self.verbose:
-                print('error running xfoil, try slighlty different cl/alpha')
+                print('error running xfoil, try slighlty different cl/alpha') # the reason is xfoil may not converge for this particular condition but in general it converges
             if alfa is None:
                 alfa, Cd, Cm, Cl = self.runXFOIL(cl = 1.01*cl, re = re, m = m, n_crit = n_crit, iters = iters)
             else:
@@ -621,7 +582,6 @@ class Airfoil():
             #    print(proc_stdout)
             return proc_stdout
         
-        self.fileoutICEM = 'E:/propeller/python/wing3d/omeshfoil'
         self.saveICEM(self.fileoutICEM)
         ICEMrun ='"C:\\Program Files\\ANSYS Inc\\v182\\icemcfd\\win64_amd\\bin\\icemcfd" -script'
         
@@ -631,7 +591,6 @@ class Airfoil():
 #            ICEMscr = r'"E:\propeller\python\wing3d\omesh\omesh.rpl"'
             ICEMscr = '"C:/Users/wk5521/Documents/ICEM/airfoil replays/omesh.rpl"'
         elif mesh == 'unstructured':
-
             ICEMscr = r'"C:\Users\wk5521\Documents\ICEM\airfoil replays\mesh_output.rpl"'
         
         
@@ -656,7 +615,7 @@ class Airfoil():
                casename = name, chord = chord, viscosity = viscosity, T=T,
                alfa = alfa,
                mach = mach,
-               meshin = 'E:/propeller/python/wing3d/omesh/fluent.msh',
+               meshin = self.meshin,
                farfieldnames = ['pressure-farfield'],
                outletnames = [],
                path = path )
@@ -694,16 +653,11 @@ class Airfoil():
         self.z1 = np.ones(len(self.x1))*self.z
         self.z2 = np.ones(len(self.x2))*self.z
         
-        
-        
-    def qpropData(self, m, re):
-        """ this method finds coefficients required to define qprop input file
-            
+    def qpropData(self, m, re, n = 12):
+        """ this method finds coefficients required to define qprop input file            
         returns (cl0, clalfa, cd0, clcd0, cd2u, cd2l)
-        
         """
 #        collect some data for range of angles of attack
-        n = 12
         alfas = np.zeros(n)
         cds = np.zeros(n)
         cms = np.zeros(n)
@@ -762,107 +716,16 @@ class Airfoil():
         plt.xlabel(r'$x/c$',fontsize=12)
         plt.ylabel(r'$y/c$',fontsize=12)
         plt.title(r"{}".format(name), fontsize=12)
-        # Make room for the ridiculously large title.
         plt.subplots_adjust(top=0.8)
         plt.axis('equal')
         plt.grid(which='major', linewidth = 0.2)
         plt.tight_layout()
-#        plt.grid(True)
         if saveFig:
             plt.savefig(self.fileFig, dpi = 1000)
         plt.show()
         
-        
         if tex:
             X = np.append((self.x/self.chord).reshape(-1,1), (self.y/self.chord).reshape(-1,1), axis = 1 )
-#            print(X)
-            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\{}airfoil.txt'.format(nametex), X)
+            savedir = self.workingdir + r'\wing3d\tex-plots\{}airfoil.txt'.format(nametex)
+            np.savetxt(savedir, X)
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-def subprocess_cmd(command):
-    process = subprocess.Popen(command,stdout=subprocess.PIPE, shell=True)
-    proc_stdout = process.communicate()[0].strip()
-#    print(proc_stdout)
-    return proc_stdout
