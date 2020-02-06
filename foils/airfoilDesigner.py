@@ -22,6 +22,8 @@ class airfoilDesigner():
         L_req: array of cls for multi-point design: e.g. [.3,.6,.9]
         parametrization: 'CST' or 'BS' (b-spline)
         """
+        print('running airfoil designer')
+
         self.parametrization = parametrization
         self.L_req = L_req
         self.N_pars = N_pars
@@ -151,60 +153,4 @@ class airfoilDesigner():
         return merit
 
         
-    
-    
-    
-xs = [.02, .3, .9]
-weights = [1,1,1]
-maxiter = 80
-
-a3 = airfoilDesigner([1],'CST', 10, ts = [ .04,.11, .015], xs = xs, weights = weights)
-a3.runOptimization(maxiter = maxiter)
-
-a4 = airfoilDesigner([1.2], 'CST',10, ts = [ .04,.11, .015], xs = xs, weights = weights)
-a4.runOptimization(maxiter = maxiter)
-    
-a = airfoilDesigner([.8], 'CST', 12, ts = [.04,.11,.015], xs = xs, weights = weights)
-a.runOptimization(maxiter = maxiter)
-    
-
-a0 = airfoilDesigner([1], 'CST', 12, ts = [ .04,.11, .015], xs = xs, weights = weights)
-a0.runOptimization(maxiter = maxiter)
-
-#
-a1 = airfoilDesigner([1.2],'CST', 12, ts = [ .04,.11, .015], xs = xs, weights = weights)
-a1.runOptimization(maxiter = maxiter)
-#
-a2 = airfoilDesigner([.8], 'CST',10, ts = [ .04,.11, .015], xs = xs, weights = weights)
-a2.runOptimization(maxiter = maxiter)
-
-    
-
-
-
-b0 = airfoilDesigner([1], 'CST',12, ts = [.16, .1, .07], xs = xs, weights = weights)
-b0.runOptimization(maxiter = 30)
-
-
-
-b1 = airfoilDesigner([.6],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b1.runOptimization(maxiter = 120)
-b2 = airfoilDesigner([.8],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b2.runOptimization(maxiter = 120)
-
-b3 = airfoilDesigner([1],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b3.runOptimization(maxiter = 120)
-
-
-
-b31 = airfoilDesigner([1.2],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b31.runOptimization(maxiter = 120)
-
-b4 = airfoilDesigner([.6, .8],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b4.runOptimization(maxiter = 100)
-b5 = airfoilDesigner([.8, 1],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b5.runOptimization(maxiter = 100)
-b6 = airfoilDesigner([1, 1.2],'BS', 10, ts = [ .04, .11, .015], xs = xs, weights = weights)
-b6.runOptimization(maxiter = 100)
-
 

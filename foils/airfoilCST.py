@@ -23,7 +23,7 @@ from airfoil import Airfoil
 from subprocess import run, PIPE
 
         
-class CSTairfoil:
+class CSTairfoil():
     def __init__(self, P, Q, N1 = 0.5 , N2 = 0.5, M1 = 1, M2 = 1, points = 160, N = None, verbose = False, option = 2, workingdir = None, xfoildir = None):
         """
         INPUTS:

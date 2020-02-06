@@ -57,3 +57,13 @@ foilb.plotAirfoil(name = 'thickened te of bspline foil')
 # needless to mention, this library allows processing of airfoil to match required geoemtry parameters of any form: 
 # chord, maximum thickness, leading edge radius, trailing edge thickness, camber and thickness scaling, rotating, etc.
 # hence it can be used to define airfoil stacking in 3d wing-type design cases.
+
+#==================================================================
+# 3. run airfoil design using evolutionary process
+from foils.airfoilDesigner import airfoilDesigner
+xs = [.02, .3, .9]
+weights = [1, 1, 1]
+maxiter = 80
+
+design = airfoilDesigner([1],'CST', 10, ts = [.04, .11, .015], xs = xs, weights = weights)
+design.runOptimization(maxiter = maxiter)
