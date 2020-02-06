@@ -1,5 +1,5 @@
 from airfoil import Airfoil
-from foils.CSTcurve import CSTairfoil, CSTcurve
+from foils.airfoilCST import CSTairfoil, CSTcurve
 
 
 # 1. will build the airfoil using the cst parametric definition
@@ -20,7 +20,7 @@ airfoil.plotAirfoil()
 foil = airfoil.genAirfoil()
 foil.plotAirfoil()
 
-# 1.4 it is basically the same airfoil, but we now have plenty of options available for this generic Airfoil class object
+# 1.4. it is basically the same airfoil, but we now have plenty of options available for this generic Airfoil class object
 # lets modify trailing edge to make it more realistic
 
 foil.cutTE_XFOIL(t = .01, r = 0.25)
@@ -29,11 +29,12 @@ foil.plotAirfoil()
 # several options are available for geometry modifications including: leading edge radius modification (e.g. to match required radius)
 # thickenss and camber scaling (e.g. to match required maximum thickness), etc.
 
-# 1.5 lets take a look at last part of Airfoil class- analysis
+# 1.5. lets take a look at last part of Airfoil class- analysis
 # there are options for xfoil and fluent analyses
 # fluent requires software, which we might not have, so lets stick to xfoil and run our foil at re = 5e5 at angle of attack = 5 degrees:
 
 foil.runXFOIL(alfa = 5, re=5e5)
 
-# outputs ->
+# outputs -> (5.0 1.0132 0.01035 -0.1013), which means 1.0132 lift coefficient, 0.01035 drag coefficient and -0.1013 pitching moment coefficient
+# a several options for running xfoil are defined as well, which allow to quickly run airfoil polar or run for desired lift coefficient
 

@@ -62,81 +62,6 @@ from airfoil import Airfoil
 
 from subprocess import run, PIPE
 
-
-class CSTcurve():
-    """
-    evaluates bernstein polynomials to form a curve for given parameters
-
-    INPUTS:
-    P:          vector of parameters of any length e.g. P = [1,1,1,1,1]
-    N1, N2:     le and te exponents for derivative control, default set (0.5,1)
-    
-    attributes:
-    x,y:        coordinates of curve
-    """
-    
-    def __init__(self,P,N1,N2, points):
-        self.P = P
-        self.N1 = N1
-        self.N2 = N2
-        self.x = []
-        self.y = []
-        self.CST_curve(P, points)
-        
-    def Bernstein(self,i,p,phi):
-    # returns value of bernstein for single point (phi), inputs are parameters
-        return np.math.factorial(p)/(np.math.factorial(i)*np.math.factorial(p-i))*(phi**i)*((1-phi)**(p-i))
-    
-    def C(self, phi, N1, N2):
-        return phi**N1 * (1-phi)**N2
-    
-    def S(self,phi,P):
-        sum=0
-        l=len(P)-1
-        for i in range(l+1):
-            sum += P[i]*self.Bernstein(i,l,phi)
-        return sum
-    
-    def zeta(self, phi, P, N1, N2):  
-        return self.C(phi, N1, N2)  *  self.S(phi, P) #+  phi*.0005
-    
-    def CST_curve(self , P, points):
-        #defines coordiantes of points which define CST curve
-        
-        self.x = (np.logspace(0,1, base = 10, num = points)-1)/9
-        
-        for i in range(points):
-            #self.x.append( i/100. )
-            self.y.append( self.zeta( self.x[i], self.P, self.N1, self.N2) )   
-        self.y = np.asarray(self.y)
-   
-    def plot_CST(self, tex = False):
-        from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
-        fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
-        ax.plot(self.x, self.y, 'k-', linewidth = 1)
-        plt.grid(True)
-        plt.grid(which='major', linewidth = 0.2)
-        plt.title('CST curve formed using given vector P')
-        plt.show()
-        
-        if tex:
-            X = np.append(self.x.reshape(-1,1), self.y.reshape(-1,1), axis = 1)
-            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\cstcurve.txt', X)
-
-    def plotBernBase(self, n):
-        """ just to plot bernstein basis, for refernce """
-        def Bernstein(i,p,phi):
-            # returns value of bernstein for single point (phi), inputs are parameters
-            return np.math.factorial(p)/(np.math.factorial(i)*np.math.factorial(p-i))*(phi**i)*((1-phi)**(p-i))
-        fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
-        x = np.linspace(0,1,100)
-        for i in range(n+1):
-            print('i, p = {}, {}'.format(i,n-i))
-            y =  Bernstein(i, n, x)
-            ax.plot(x, y, 'k-', linewidth = 1)
-            X = np.append(x.reshape(-1,1), y.reshape(-1,1), axis = 1)
-            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\bernstein{}.txt'.format(i), X)
-    
         
 class CSTairfoil:
     def __init__(self, P, Q, N1 = 0.5 , N2 = 0.5, M1 = 1, M2 = 1, points = 160, N = None, verbose = False, option = 2, workingdir = None):
@@ -261,7 +186,7 @@ class CSTairfoil:
                 
     def addCamber_XFOIL(self):
         """ modifies airfoil using xfoil to maintain camber
-        
+
             t: thickness
             r: blending radius
         """
@@ -281,3 +206,80 @@ class CSTairfoil:
         if self.verbose:
             print('succesfully constructed foil')        
                 
+
+
+
+
+class CSTcurve():
+    """
+    evaluates bernstein polynomials to form a curve for given parameters
+
+    INPUTS:
+    P:          vector of parameters of any length e.g. P = [1,1,1,1,1]
+    N1, N2:     le and te exponents for derivative control, default set (0.5,1)
+    
+    attributes:
+    x,y:        coordinates of curve
+    """
+    
+    def __init__(self,P,N1,N2, points):
+        self.P = P
+        self.N1 = N1
+        self.N2 = N2
+        self.x = []
+        self.y = []
+        self.CST_curve(P, points)
+        
+    def Bernstein(self,i,p,phi):
+    # returns value of bernstein for single point (phi), inputs are parameters
+        return np.math.factorial(p)/(np.math.factorial(i)*np.math.factorial(p-i))*(phi**i)*((1-phi)**(p-i))
+    
+    def C(self, phi, N1, N2):
+        return phi**N1 * (1-phi)**N2
+    
+    def S(self,phi,P):
+        sum=0
+        l=len(P)-1
+        for i in range(l+1):
+            sum += P[i]*self.Bernstein(i,l,phi)
+        return sum
+    
+    def zeta(self, phi, P, N1, N2):  
+        return self.C(phi, N1, N2)  *  self.S(phi, P) #+  phi*.0005
+    
+    def CST_curve(self , P, points):
+        #defines coordiantes of points which define CST curve
+        
+        self.x = (np.logspace(0,1, base = 10, num = points)-1)/9
+        
+        for i in range(points):
+            #self.x.append( i/100. )
+            self.y.append( self.zeta( self.x[i], self.P, self.N1, self.N2) )   
+        self.y = np.asarray(self.y)
+   
+    def plot_CST(self, tex = False):
+        from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
+        fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
+        ax.plot(self.x, self.y, 'k-', linewidth = 1)
+        plt.grid(True)
+        plt.grid(which='major', linewidth = 0.2)
+        plt.title('CST curve formed using given vector P')
+        plt.show()
+        
+        if tex:
+            X = np.append(self.x.reshape(-1,1), self.y.reshape(-1,1), axis = 1)
+            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\cstcurve.txt', X)
+
+    def plotBernBase(self, n):
+        """ just to plot bernstein basis, for refernce """
+        def Bernstein(i,p,phi):
+            # returns value of bernstein for single point (phi), inputs are parameters
+            return np.math.factorial(p)/(np.math.factorial(i)*np.math.factorial(p-i))*(phi**i)*((1-phi)**(p-i))
+        fig, ax = plt.subplots(figsize = (4,2), dpi = 300)
+        x = np.linspace(0,1,100)
+        for i in range(n+1):
+            print('i, p = {}, {}'.format(i,n-i))
+            y =  Bernstein(i, n, x)
+            ax.plot(x, y, 'k-', linewidth = 1)
+            X = np.append(x.reshape(-1,1), y.reshape(-1,1), axis = 1)
+            np.savetxt(r'E:\propeller\python\wing3d\tex-plots\bernstein{}.txt'.format(i), X)

@@ -59,7 +59,7 @@ class Airfoil():
         """
     def __init__(self, ftype = 'ICEM', filein = None, x = None, y = None,  T_req = None, camber = None,
                  chord = None, beta = None, z = 0, fileoutICEM = None, t = 0, dx = 0, dy = 0, split = False, origin = 0,
-                 camb = False, r_LE = 0.0005, verbose = False):
+                 camb = False, r_LE = 0.0005, verbose = False, workingdir = None):
         """       
         
         inputs:
