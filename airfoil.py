@@ -3,7 +3,27 @@
 Created on Fri Jun 14 13:57:29 2019
 @author: Witold Klimczyk
 
+# ICEM
+foil = Airfoil(filein = r'E:\propeller\mh_airofils\mh117/mh117.txt', t = 0.001, chord = 0.2)
+foil.runFluent(15,.2,1)#
+
+# XFOIL
+foil2 = Airfoil(ftype = 'XFOIL', filein = r'E:\AIRFOIL\airfoils/naca0012.txt', t = 0.001, chord = 0.2)
+
+# x,y
+
+
+X = pd.read_csv(f'http://airfoiltools.com/airfoil/seligdatfile?airfoil={foilname}-il')
+X.to_csv(r'E:\AIRFOIL\temp.csv', header = False, index = False)
+X = np.loadtxt(r'E:\AIRFOIL\temp.csv')
+foil = Airfoil( 'XFOIL',  r'E:\AIRFOIL\temp.csv')
+
+
+
+
+
 """
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,6 +33,8 @@ import subprocess
 import os
 from subprocess import run, PIPE
 import gc
+import pandas as pd
+from urllib.error import HTTPError
 
 from fluentScheme import generateScheme
 from icemScheme import generateICEMScheme
@@ -21,10 +43,10 @@ from icemScheme import generateICEMScheme
 class Airfoil():
     def __init__(self, ftype = 'ICEM', filein = None, x = None, y = None,  T_req = None, camber = None,
                  chord = None, beta = None, z = 0, fileoutICEM = None, t = 0, dx = 0, dy = 0, split = False, origin = 0,
-                 camb = False, r_LE = 0.0005, verbose = False, workingdir = None, xfoildir = None):
-        """       
+                 camb = False, r_LE = None, verbose = False, workingdir = r'E:\AIRFOIL', xfoildir = None):
+        """
         inputs:
-            - ftype: 'ICEM' / 'XFOIL' / 'XY', specifies type of airofil input data 
+            - ftype/name: 'ICEM' / 'XFOIL' / 'XY', specifies type of airofil input data or its name to download from airfoiltools
             - filein: '.txt' file with points coords (can be non-txt)
             - chord: dimensionless chord
             - beta: originally used for propeller pitch, for wing stands for twist
@@ -48,26 +70,28 @@ class Airfoil():
         self.z = z
         self.filein = filein
 
-        self.workingdir = workingdir if workingdir != None else os.getcwd()
+        self.workingdir = workingdir if workingdir != None else os.getcwd().strip('\\python')
         print('workingdir {}'.format(self.workingdir))
-        self.xfoildir = xfoildir if xfoildir != None else os.getcwd().strip('\\python')
-        self.filebuffer = self.xfoildir + '/XFOIL/xfoilairfoil.txt'
-        self.filecp = self.xfoildir + '/XFOIL/xfoilairfoilcp.txt'
-        self.fileCptex = self.xfoildir + '/XFOIL/xfoilairfoilcptex.txt'
-        self.camber_t = self.xfoildir + '/XFOIL/camber_t.txt'
-        self.xfoilpath = self.xfoildir + '/XFOIL/xfoil.exe'
+        self.xfoildir = self.workingdir + '/XFOIL/'
+        self.filebuffer = self.xfoildir + '/xfoilairfoil.txt'
+        self.filecp = self.xfoildir + '/xfoilairfoilcp.txt'
+        self.fileCptex = self.xfoildir + '/xfoilairfoilcptex.txt'
+        self.camber_t = self.xfoildir + '/camber_t.txt'
+        self.xfoilpath = self.xfoildir + '/xfoil.exe'
 
         # directories to check before analysis
-        self.fileFig = self.workingdir + r'\saved_plots\airfoil'
-        self.meshin = self.workingdir + '/wing3d/omesh/fluent.msh'
-        self.meshDir = self.workingdir + r'\airfoil/'
-        self.fileoutICEM = self.workingdir+'/wing3d/omeshfoil' if fileoutICEM is None else fileoutICEM
+        self.fileFig = self.workingdir + '/saved_plots/airfoil'
+        self.meshin = self.workingdir + '/mesh/fluent.msh'
+        self.meshDir = self.workingdir + '/mesh/'
+        self.fileoutICEM = self.workingdir+'/mesh/foilICEM' if fileoutICEM is None else fileoutICEM
+        self.fluentdir = self.workingdir + '/fluent/'
         self.ftype = ftype
         self.verbose = verbose
         
         self.camber = None
         self.thickness = None
         self.split = False
+        self.t = t
         
         if ftype == 'ICEM':
             self.readICEM()
@@ -77,6 +101,19 @@ class Airfoil():
         elif ftype == 'XY':
             self.x = x
             self.y = y
+        else:
+            try:
+                X = pd.read_csv(f'http://airfoiltools.com/airfoil/seligdatfile?airfoil={ftype}-il')
+                X.to_csv(r'E:\AIRFOIL\temp.csv', header = False, index = False)
+                X = np.loadtxt(r'E:\AIRFOIL\temp.csv')
+                self.x = X[:,0]
+                self.y = X[:,1]
+                self.z = self.z
+            except HTTPError:
+                print('error reading airofil from web')
+                return None
+
+
         
         # chord scaling
         if chord is None:
@@ -84,7 +121,7 @@ class Airfoil():
             if self.verbose:
                 print('evaluated chord is {:.2f}'.format(self.chord))
         else:
-            #self.chord = np.max(self.x) - np.min(self.x)
+            self.chord = np.max(self.x) - np.min(self.x)
             self.scale_XFOIL(chord/np.max(self.x))
             self.saveXFOIL()
             if self.verbose:
@@ -103,7 +140,7 @@ class Airfoil():
         
         # cut TE
         if t > 0:
-            self.cutTE_XFOIL(t, r = .3)
+            self.cutTE_XFOIL(t, r = .5)
     
         if r_LE is not None:
             r_LE_current = self.LEradius()[0]
@@ -163,7 +200,7 @@ class Airfoil():
 ###   ===================        GEOMETRY SECTION           ==========================
 ###
                     
-    def cutTE_XFOIL(self, t = .005, r = 0.05):
+    def cutTE_XFOIL(self, t = .005, r = 0.5):
         """ modifies airfoil using xfoil to maintain camber
         
             t: thickness
@@ -199,11 +236,12 @@ class Airfoil():
         """
         self.findCamberThickness()
         factor = req_T/(self.t_max*self.chord)
-        
+        print(f'{factor}')
         if camb==True:
             camb = factor
             self.modify_XFOIL(thicken = factor, camber = camb)
         else:
+            camb = 1
             self.modify_XFOIL(thicken = factor, camber = camb)
         if self.verbose:
             print('modified thickness to desired value, i.e. {:.3f}, by a factor of {:.2f}'.format(req_T, factor))
@@ -420,12 +458,12 @@ class Airfoil():
             with open( self.fileoutICEM + '.0.txt', 'w') as f:
                 f.write('{}\t{}\n'.format(len(self.x1), 1))
                 for i in range(len(self.x1)):
-                    f.write('{}\t{}\t{}\n'.format(self.x1[i]*1000, self.y1[i]*1000, self.z1[i]*1000) )
+                    f.write('{}\t{}\t{}\n'.format(self.x1[i]*1000, self.z1[i]*1000, self.y1[i]*1000) )
                     
             with open( self.fileoutICEM + '.1.txt', 'w') as f:
                 f.write('{}\t{}\n'.format(len(self.x2), 1))
                 for i in range(len(self.x2)):
-                    f.write('{}\t{}\t{}\n'.format(self.x2[i]*1000, self.y2[i]*1000, self.z2[i]*1000) ) 
+                    f.write('{}\t{}\t{}\n'.format(self.x2[i]*1000, self.z2[i]*1000, self.y2[i]*1000) ) 
                     
     def saveSW(self, airfoilfile):
         """ saves points in sw format, either as a single curve of splits to upper and lower (recommended) """
@@ -435,18 +473,18 @@ class Airfoil():
             airfoilfile += '.txt'
             with open( airfoilfile, 'w') as f:
                 for i in range(len(self.x)):
-                    f.write('{}\t{}\t{}\n'.format(self.x[i]*1000, self.y[i]*1000, self.zs[i]*1000) )
+                    f.write('{}\t{}\t{}\n'.format(self.x[i]*1000, self.zs[i]*1000, self.y[i]*1000) )
         else:
             self.z1 = np.ones(len(self.x1))*self.z
             self.z2 = np.ones(len(self.x2))*self.z
             
             with open( airfoilfile + '.0.txt', 'w') as f:
                 for i in range(len(self.x1)):
-                    f.write('{}\t{}\t{}\n'.format(self.x1[i]*1000, self.y1[i]*1000, self.z1[i]*1000) )
+                    f.write('{}\t{}\t{}\n'.format(self.x1[i]*1000, self.z1[i]*1000, self.y1[i]*1000) )
                     
             with open( airfoilfile + '.1.txt', 'w') as f:
                 for i in range(len(self.x2)):
-                    f.write('{}\t{}\t{}\n'.format(self.x2[i]*1000, self.y2[i]*1000, self.z2[i]*1000) ) 
+                    f.write('{}\t{}\t{}\n'.format(self.x2[i]*1000, self.z2[i]*1000, self.y2[i]*1000) ) 
                     
                        
 ###
@@ -492,7 +530,7 @@ class Airfoil():
             if alfa is None:
                 alfa, Cd, Cm, Cl = self.runXFOIL(cl = 1.01*cl, re = re, m = m, n_crit = n_crit, iters = iters)
             else:
-                alfa, Cd, Cm, Cl = self.runXFOIL(alfa = 1.01*alfa, re = re, m = m, n_crit = n_crit, iters = iters)
+                alfa, Cd, Cm, Cl = self.runXFOIL(alfa = .01+alfa, re = re, m = m, n_crit = n_crit, iters = iters)
                 
             #return 1, 1, 1, 1
             
@@ -561,16 +599,27 @@ class Airfoil():
         plt.show()
         
 
-
-    def runFluent(self, alfa, mach, chord, rho = 1.225, T = 300, viscosity = 1.78e-5,
-                  name = 'airfoil', path = '0', ID = 0, mesh = 'o',
-                  y1 = 0.01, n_r = 120, n_le = 30, n_top = 120
+    def runFluent(self, alfa, mach, chord, 
+                  rho = 1.225, T = 300, viscosity = 1.78e-5,
+                  name = 'airfoil', path = None, ID = 0,
+                  mesh = 'o', y1 = 0.01, n_r = 120, n_le = 30, n_top = 120,
+                  model = 'kw-sst', intermittency = False, lowre = False, polar = False,
+                  onlymesh = False, onlyfluent = False, mshin = None, meshunits = 'mm',
+                  tt = 1, farfieldnames = ['farfield'], outletnames = [], interiornames = ['int_fluid']
                   ):
         """
-        alfa, mach- self explaining
         chord used to scale mesh in fluent and use for coefficients
+        if using auto o-mesh, generate airfoil with unit chord and scale mesh to required value
+        
+        
+        
+        static method: can be applied for given mesh, without airfoil initialization
+        
         
         """
+        if path is None:
+            path = self.workingdir + r'\fluent'
+        
         import time
         start = time.time()
         # begin with structured mesh generation
@@ -582,57 +631,73 @@ class Airfoil():
             #    print(proc_stdout)
             return proc_stdout
         
-        self.saveICEM(self.fileoutICEM)
-        ICEMrun ='"C:\\Program Files\\ANSYS Inc\\v182\\icemcfd\\win64_amd\\bin\\icemcfd" -script'
-        
-            # pick mesh replay file to generate mesh
-        if mesh == 'o':
-#            ICEMscr = r'"E:\propeller\python\wing3d\rpl42.rpl"'
-#            ICEMscr = r'"E:\propeller\python\wing3d\omesh\omesh.rpl"'
-            ICEMscr = '"C:/Users/wk5521/Documents/ICEM/airfoil replays/omesh.rpl"'
-        elif mesh == 'unstructured':
-            ICEMscr = r'"C:\Users\wk5521\Documents\ICEM\airfoil replays\mesh_output.rpl"'
-        
-        
-        generateICEMScheme(y1 = y1, n_r = n_r, n_le = n_le, n_top = n_top)
-        
-        ICEM = ICEMrun + ' ' + ICEMscr
-        subprocess_cmd(ICEM)
+        if not onlyfluent:
+            self.saveICEM(self.fileoutICEM)
+            ICEMrun ='"C:\\Program Files\\ANSYS Inc\\v194\\icemcfd\\win64_amd\\bin\\icemcfd" -script'
+            
+                # pick mesh replay file to generate mesh
+            if mesh == 'o':
+                meshrpl = self.meshDir + 'omesh.rpl'
+    #            ICEMscr = r'"E:\propeller\python\wing3d\rpl42.rpl"'
+    #            ICEMscr = r'"E:\propeller\python\wing3d\omesh\omesh.rpl"'
+                ICEMscr = f'"{meshrpl}"'
+            elif mesh == 'unstructured':
+                ICEMscr = r'"C:\Users\wk5521\Documents\ICEM\airfoil replays\mesh_output.rpl"'
+            
+            
+            generateICEMScheme( y1 = y1, n_r = n_r, n_le = n_le, n_top = n_top, file = meshrpl)
+            
+            ICEM = ICEMrun + ' ' + ICEMscr
+            subprocess_cmd(ICEM)
         
         # now having the mesh, run shceme generation, hence fluent
-
+        if onlymesh:
+            print('finished mesh')
+            return 0
         
-        casename = '{:.2f},{:.2f},{}'.format(alfa, mach, ID)
         
-        if mesh == 'unstructured':
-            fluentjournal = r'C:\Users\wk5521\Documents\FLUENT/SCHEMES/schemeunstructured.txt'    
-        elif mesh =='o':
-            fluentjournal = r'H:/airfoil design/omesh/omesh.txt'
-       
+        fluentjournal = self.workingdir + '/fluent/journal.txt'
         
-        if mesh == 'o':
-            generateScheme(filename = fluentjournal,
-               casename = name, chord = chord, viscosity = viscosity, T=T,
-               alfa = alfa,
-               mach = mach,
-               meshin = self.meshin,
-               farfieldnames = ['pressure-farfield'],
-               outletnames = [],
-               path = path )
-        else:
-            generateScheme(filename = fluentjournal, 
-                       chord = chord, mach = mach, alfa = alfa, viscosity = viscosity, T = T, 
-                       casename = name, path = path)
+        casename = f'foil,{model},{alfa},{mach},{chord},{self.t}'
+        if polar:
+            casename = f'foil,{model},{mach},{chord},{self.t}'
         
-        FLUENTrun = '"C:\\Program Files\\ANSYS Inc\\v182\\fluent\\ntbin\\win64\\fluent.exe" 2d -t8 -wait -i'
+        if lowre:
+            casename+=',lowre'
+        if intermittency:
+            casename+= 'inter'
+        
+        meshin = mshin if mshin is not None else self.meshin
+        
+        generateScheme(filename = fluentjournal,
+           casename = casename, 
+           chord = chord, 
+           viscosity = viscosity, 
+           T=T,
+           alfa = alfa,
+           mach = mach,
+           meshin = meshin,
+           meshunits = meshunits,
+           farfieldnames = farfieldnames,
+           outletnames = outletnames,
+           interiornames = interiornames,
+           path = self.fluentdir,
+           model = model,
+           intermittency = intermittency,
+           lowre = lowre,
+           polar = polar, 
+           tt =tt
+           )
+    
+        FLUENTrun = '"C:\\Program Files\\ANSYS Inc\\v194\\fluent\\ntbin\\win64\\fluent.exe" 2d -t8 -wait -i'
         FLUENT  = FLUENTrun + ' '+ '"{}"'.format(fluentjournal)
         
         subprocess_cmd(FLUENT)
         end = time.time()
         
-        showresult = True
+        showresult = False
         if showresult:
-            result = np.loadtxt('{}/reports/{}.out'.format(path, name), skiprows = 100)
+            result = np.loadtxt('{}/reports/{}.out'.format(self.fluentdir, casename), skiprows = 100)
             result = result[-10:]
             result = np.mean(result, axis = 0)
             lift = result[1]
@@ -653,7 +718,7 @@ class Airfoil():
         self.z1 = np.ones(len(self.x1))*self.z
         self.z2 = np.ones(len(self.x2))*self.z
         
-    def qpropData(self, m, re, n = 12):
+    def qpropData(self, m, re, n = 12, n_crit = 5):
         """ this method finds coefficients required to define qprop input file            
         returns (cl0, clalfa, cd0, clcd0, cd2u, cd2l)
         """
@@ -665,8 +730,8 @@ class Airfoil():
         
         j = 0
         for i in range(-6, 6, 1):
-            self.cutTE_XFOIL(t = 0.005, r = .2)
-            alfas[j], cds[j], cms[j], cls[j] = self.runXFOIL(alfa = i, re = re, m = m, iters = 1000)
+            self.cutTE_XFOIL(t = 0.005, r = .3)
+            alfas[j], cds[j], cms[j], cls[j] = self.runXFOIL(alfa = i, re = re, m = m, iters = 1000, n_crit = n_crit)
             j+=1
         
         cl0 = cls[6]
